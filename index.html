@@ -19,7 +19,8 @@
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{font-family:Cairo,system-ui,sans-serif;background:#12102a;color:#e9e7ff;min-height:100vh}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#17143a;z-index:30}
-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:#17143a}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:#17143a;transition:transform 0.3s ease-in-out}
+header.header-hidden{transform:translateY(-100%)}
 .navl{white-space:nowrap}.navl.on{background:#ffd23f;color:#12102a}
 .cdbox{background:#12102a;color:#ffd23f}
 </style>
@@ -156,6 +157,20 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
 document.addEventListener('keydown',e=>{const t=e.target;if(e.key==='Enter'&&!e.shiftKey&&t.dataset&&t.dataset.enter){e.preventDefault();act[t.dataset.enter](t.dataset.id)}});
 
 render();friends();msgs();badge();
+
+/* ---------- dynamic header (hide on scroll down, show on scroll up) ---------- */
+(function(){
+ const hd=document.querySelector('header');if(!hd)return;
+ let lastScrollY=window.scrollY,ticking=false;
+ function update(){
+  const y=window.scrollY;
+  if(y<=0)hd.classList.remove('header-hidden');            // top of page: always visible
+  else if(y>lastScrollY&&y>50)hd.classList.add('header-hidden'); // scrolling down past 50px
+  else if(y<lastScrollY)hd.classList.remove('header-hidden');    // scrolling up
+  lastScrollY=y;ticking=false;
+ }
+ window.addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(update)}},{passive:true});
+})();
 </script>
 </body>
 </html>
