@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MemeVerse</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style type="text/tailwindcss">
+@layer components{
+ .card{@apply rounded-2xl bg-[#1c1940] border border-white/10}
+ .btn{@apply rounded-xl bg-[#ff5d73] hover:bg-[#ff7488] text-white font-bold px-4 py-2 transition-colors}
+ .btn-ghost{@apply rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors}
+ .inp{@apply w-full rounded-xl bg-[#12102a] border border-white/10 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#ffd23f]}
+ .lbl{@apply block text-xs text-slate-400 mb-1}
+ .chip{@apply inline-block rounded-full bg-[#ffd23f] text-[#12102a] text-[11px] font-extrabold px-2 py-0.5 align-middle}
+}
+:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:Cairo,system-ui,sans-serif;background:#12102a;color:#e9e7ff;min-height:100vh}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#17143a;z-index:30}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:#17143a}
+.navl{white-space:nowrap}.navl.on{background:#ffd23f;color:#12102a}
+.cdbox{background:#12102a;color:#ffd23f}
+</style>
+</head>
+<body>
+<header class="border-b border-white/10">
+ <div class="max-w-3xl mx-auto px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+  <a href="#home" class="flex items-center gap-2 me-auto"><span class="w-9 h-9 grid place-items-center rounded-xl bg-[#ffd23f] text-xl -rotate-6">😂</span><span class="text-xl font-extrabold">MemeVerse</span></a>
+  <button data-act="chat" class="relative btn-ghost text-lg" aria-label="Chat">💬<span id="badge" class="hidden absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ff5d73] text-white text-[11px] font-bold grid place-items-center"></span></button>
+  <a href="#profile" aria-label="Profile"><img id="hav" class="w-9 h-9 rounded-full ring-2 ring-[#ffd23f]"></a>
+  <nav id="nav" class="order-last w-full flex gap-1 overflow-x-auto text-sm pb-1"></nav>
+ </div>
+</header>
+<main id="main" class="max-w-3xl mx-auto px-3 py-5 space-y-4"></main>
+
+<aside id="drawer" class="fixed top-0 bottom-0 left-0 w-full sm:w-96 z-40 bg-[#17143a] border-e border-white/10 flex flex-col -translate-x-full transition-transform duration-300">
+ <div class="flex items-center justify-between p-3 border-b border-white/10"><b class="text-lg">Quick Chat · دردشة سريعة</b><button data-act="chat" class="btn-ghost">✕</button></div>
+ <div class="p-3 flex gap-2"><input id="newf" data-enter="addf" class="inp" dir="auto" maxlength="24" placeholder="Add a friend · أضف صديق"><button data-act="addf" class="btn">Add</button></div>
+ <div id="friends" class="px-3 pb-2 flex gap-2 overflow-x-auto"></div>
+ <div id="msgs" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 border-y border-white/10"></div>
+ <div class="p-3 flex gap-2"><input id="mi" data-enter="send" class="inp" dir="auto" placeholder="Type a message · اكتب رسالة"><button data-act="send" class="btn">Send</button></div>
+</aside>
+
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/70 grid place-items-center p-4"><div id="mbox" class="card w-full max-w-md p-5 max-h-full overflow-y-auto"></div></div>
+<div id="toast" class="fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[90%] z-50 rounded-xl bg-[#ffd23f] text-[#12102a] font-bold px-4 py-2 opacity-0 pointer-events-none transition-opacity"></div>
+
+<script>
+const KEY='memeverse_v1',$=s=>document.querySelector(s),uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const EM=['😎','🤣','🐸','👻','🦄','🔥','🤖','🐱','🍕','👽','🥸','🧠'];
+const hash=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
+const uri=svg=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+const av=seed=>{const h=hash(seed||'x'),a=h%360;return uri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${a},80%,58%)"/><stop offset="1" stop-color="hsl(${(a+60)%360},80%,42%)"/></linearGradient></defs><rect width="64" height="64" fill="url(#g)"/><text x="32" y="43" font-size="32" text-anchor="middle">${EM[h%EM.length]}</text></svg>`)};
+const memeSvg=(t,b,h,e)=>uri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,40%)"/><stop offset="1" stop-color="hsl(${(h+50)%360},70%,25%)"/></linearGradient></defs><rect width="600" height="400" fill="url(#g)"/><text x="300" y="250" font-size="150" text-anchor="middle">${e}</text><g font-family="Impact,Cairo,sans-serif" font-weight="900" font-size="44" fill="#fff" stroke="#000" stroke-width="2" text-anchor="middle"><text x="300" y="62">${t}</text><text x="300" y="375">${b}</text></g></svg>`);
+const imgErr=i=>{i.onerror=null;i.src=memeSvg('IMAGE FAILED','TO LOAD',0,'🖼️')};
+const ago=t=>{const m=Math.floor((Date.now()-t)/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.floor(m/60)+' h ago':Math.floor(m/1440)+' d ago'};
+
+const WK=Math.floor(Date.now()/6048e5);
+const THEMES=[['When the Wi-Fi drops mid-game','لما النت يفصل في وسط اللعبة'],['Me vs. Monday morning','أنا ضد صباح الاثنين'],['Exam week be like…','أسبوع الامتحانات يكون كده…'],['Expectation vs. reality','التوقعات مقابل الواقع'],['Group chat at 3 AM','الجروب الساعة 3 الفجر'],['The fridge at midnight','التلاجة الساعة 12 بالليل']];
+const TH=THEMES[WK%THEMES.length];
+
+function seedData(){const n=Date.now(),P=(a,s,c,i,l,ts,x={})=>({id:uid(),author:a,seed:s,cap:c,img:i,likes:l,comments:[],ts:n-ts*6e4,...x});
+ return{profile:{name:'You',bio:'Meme lover · مدمن ميمز',seed:'you'},
+ posts:[P('Sara','sara','لما تقول «خمس دقايق وأنام» 😴',memeSvg('5 MINUTES','THEN 5 HOURS LATER',260,'😴'),24,30),
+  P('Omar','omar','Me pretending to understand the meeting',memeSvg('YEAH, MAKES SENSE','(IT DOES NOT)',20,'🥸'),41,120),
+  P('Lina','lina','الواي فاي بعد ما قلت «هنزل الحلقة كلها»',memeSvg('WIFI: 1 BAR','MY PATIENCE: 0',190,'📶'),58,600),
+  P('Omar','omar','Challenge entry: ' + TH[0],memeSvg('NOT NOW,','I WAS WINNING',330,'🎮'),17,45,{ch:true,week:WK})],
+ liked:[],saved:[],friends:[{id:'f1',name:'Sara'},{id:'f2',name:'Omar'}],
+ chats:{f1:[{from:'them',t:'Hey! Ready for the weekly challenge? 🔥',ts:n}]},unread:{f1:1},sel:null}}
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.posts)S=seedData();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Storage is full. Try a smaller image.')}};
+let cur='home',ptab='mine',query='',open=new Set(),draft={},tt;
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.remove('opacity-0');clearTimeout(tt);tt=setTimeout(()=>t.classList.add('opacity-0'),2600)};
+
+/* ---------- post pieces ---------- */
+function comments(p){return `<div class="border-t border-white/5 p-3 space-y-2">${p.comments.map(c=>`<div class="text-sm"><b dir="auto">${esc(c.n)}</b> <span class="text-slate-400 text-xs">${ago(c.ts)}</span><div dir="auto" class="break-words">${esc(c.t)}</div></div>`).join('')||'<div class="text-sm text-slate-400">No comments yet. Start the roast · كن أول المعلقين</div>'}<div class="flex gap-2"><input id="ci-${p.id}" data-enter="sendcmt" data-id="${p.id}" class="inp" dir="auto" maxlength="200" placeholder="Add a comment · اكتب تعليق"><button data-act="sendcmt" data-id="${p.id}" class="btn">Send</button></div></div>`}
+function card(p){const L=S.liked.includes(p.id),B=S.saved.includes(p.id),nm=p.mine?S.profile.name:p.author,sd=p.mine?S.profile.seed:p.seed;
+ return `<article data-card="${p.id}" class="card overflow-hidden"><div class="flex items-center gap-3 p-4"><img src="${av(sd)}" class="w-10 h-10 rounded-full"><div class="flex-1 min-w-0"><div class="font-bold truncate" dir="auto">${esc(nm)} ${p.ch?'<span class="chip">Challenge</span>':''}</div><div class="text-xs text-slate-400">${ago(p.ts)}</div></div>${p.mine?`<button data-act="del" data-id="${p.id}" class="btn-ghost text-xs">🗑️ Delete</button>`:''}</div>
+ <p dir="auto" class="px-4 pb-3 whitespace-pre-wrap break-words">${esc(p.cap)}</p>
+ <img src="${esc(p.img)}" alt="" class="w-full max-h-[480px] object-contain bg-black" loading="lazy" onerror="imgErr(this)">
+ <div class="flex items-center gap-1 p-2 border-t border-white/5"><button data-act="like" data-id="${p.id}" class="btn-ghost ${L?'!text-[#ff5d73]':''}">${L?'❤️':'🤍'} ${p.likes}</button><button data-act="cmt" data-id="${p.id}" class="btn-ghost">💬 ${p.comments.length}</button><button data-act="save" data-id="${p.id}" class="btn-ghost ms-auto ${B?'!text-[#ffd23f]':''}">${B?'🔖 Saved':'📑 Save'}</button></div>${open.has(p.id)?comments(p):''}</article>`}
+const feedList=a=>a.length?a.map(card).join(''):'<div class="card p-8 text-center text-slate-400">Nothing here yet. Post a meme to get this started · لا يوجد شيء بعد</div>';
+function createBox(k){return `<section class="card p-4 space-y-3"><h2 class="font-extrabold text-lg">${k==='challenge'?'Join the challenge · شارك في التحدي':'Post a meme · انشر ميم'}</h2>
+ <textarea id="cap-${k}" class="inp" rows="2" dir="auto" maxlength="280" placeholder="Caption · اكتب تعليق على الميم"></textarea>
+ <div class="flex gap-2"><input id="url-${k}" class="inp" dir="ltr" placeholder="Meme image URL · رابط الصورة" oninput="draft['${k}']=null;pv('${k}',this.value.trim())"><label class="btn-ghost border border-white/10 cursor-pointer whitespace-nowrap grid place-items-center">📁 Upload<input type="file" accept="image/*" class="hidden" onchange="pick('${k}',this)"></label></div>
+ <div id="pv-${k}"></div><div class="text-end"><button data-act="post" data-id="${k}" class="btn">Post meme</button></div></section>`}
+const pv=(k,s)=>{$('#pv-'+k).innerHTML=s?`<img src="${esc(s)}" alt="" class="max-h-64 mx-auto rounded-xl bg-black" onerror="imgErr(this)">`:''};
+function compress(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const s=Math.min(1,800/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.8))};i.onerror=no;i.src=r.result};r.onerror=no;r.readAsDataURL(f)})}
+const pick=(k,el)=>{if(el.files[0])compress(el.files[0]).then(d=>{draft[k]=d;$('#url-'+k).value='';pv(k,d)}).catch(()=>toast('Could not read that image'))};
+const refresh=id=>{const p=S.posts.find(x=>x.id===id),el=document.querySelector(`[data-card="${id}"]`);if(p&&el)el.outerHTML=card(p)};
+
+/* ---------- views ---------- */
+const cdHtml=()=>{let d=Math.max(0,(WK+1)*6048e5-Date.now());const u=[['Days','يوم',864e5],['Hours','ساعة',36e5],['Min','دقيقة',6e4],['Sec','ثانية',1e3]];
+ return u.map(([e,a,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div class="cdbox rounded-2xl py-3 text-center"><div class="text-3xl font-extrabold tabular-nums">${String(v).padStart(2,'0')}</div><div class="text-xs opacity-80">${e} · ${a}</div></div>`}).join('')};
+const V={
+ home(){const lk=S.posts.reduce((a,p)=>a+p.likes,0);
+  return `<section class="rounded-3xl bg-[#ffd23f] text-[#12102a] p-6"><h1 class="text-3xl font-extrabold leading-tight">Post it. Roast it. Win the week.</h1><p class="mt-1 font-semibold">انشر، علّق، وكن أفضل ميمر هذا الأسبوع</p><p class="mt-3 text-sm font-bold">${S.posts.length} memes · ${lk} likes · ${S.friends.length} friends</p></section>${createBox('home')}<h2 class="font-extrabold text-lg">Latest · الأحدث</h2>${feedList(S.posts.slice(0,3))}`},
+ feed(){return `${createBox('feed')}<input id="q" class="inp" dir="auto" value="${esc(query)}" placeholder="🔍 Search memes · ابحث" oninput="query=this.value;$('#list').innerHTML=feedList(filtered())"><div id="list" class="space-y-4">${feedList(filtered())}</div>`},
+ challenge(){const E=S.posts.filter(p=>p.ch&&p.week===WK).sort((a,b)=>b.likes-a.likes);
+  return `<section class="rounded-3xl bg-[#1c1940] border-2 border-[#ffd23f] p-5"><span class="chip">Weekly challenge · تحدي الأسبوع</span><h1 class="text-2xl font-extrabold mt-2" dir="ltr">${TH[0]}</h1><p class="text-slate-300">${TH[1]}</p><div id="cd" class="grid grid-cols-4 gap-2 mt-4">${cdHtml()}</div><p class="text-sm text-slate-400 mt-3">Post your best take below. The most liked entry wins · الأكثر إعجاباً يفوز</p></section>${createBox('challenge')}<h2 class="font-extrabold text-lg">Entries · المشاركات (${E.length})</h2>${feedList(E)}`},
+ best(){const T=[...S.posts].sort((a,b)=>b.likes-a.likes).slice(0,10);
+  return `<h1 class="text-2xl font-extrabold">Best of Best · الاحسن من الاحسن</h1>`+T.map((p,i)=>`<div class="space-y-1"><div class="font-extrabold text-[#ffd23f]">${['🥇','🥈','🥉'][i]||'#'+(i+1)} ${p.likes} likes</div>${card(p)}</div>`).join('')},
+ profile(){const mine=S.posts.filter(p=>p.mine),sv=S.posts.filter(p=>S.saved.includes(p.id)),pr=S.profile,L=ptab==='mine'?mine:sv;
+  return `<section class="card p-5 flex items-center gap-4"><img src="${av(pr.seed)}" class="w-20 h-20 rounded-full ring-4 ring-[#ffd23f]"><div class="flex-1 min-w-0"><h1 class="text-xl font-extrabold truncate" dir="auto">${esc(pr.name)}</h1><p class="text-slate-300 break-words" dir="auto">${esc(pr.bio)||'No bio yet'}</p><p class="text-xs text-slate-400 mt-1">${mine.length} posts · ${sv.length} saved</p></div><button data-act="edit" class="btn">Edit profile</button></section>
+  <div class="flex gap-2"><button data-act="ptab" data-id="mine" class="btn-ghost navl ${ptab==='mine'?'on':''}">My posts · منشوراتي</button><button data-act="ptab" data-id="saved" class="btn-ghost navl ${ptab==='saved'?'on':''}">Saved · المحفوظات</button></div>${feedList(L)}`}};
+const filtered=()=>{const q=query.trim().toLowerCase();return S.posts.filter(p=>!q||p.cap.toLowerCase().includes(q))};
+const NAV=[['home','Home'],['feed','Meme Feed'],['challenge','Challenge Time · وقت التحدي'],['best','Best of Best · الاحسن من الاحسن']];
+$('#nav').innerHTML=NAV.map(([k,l])=>`<a href="#${k}" data-nav="${k}" class="btn-ghost navl">${l}</a>`).join('');
+function render(){cur=V[location.hash.slice(1)]?location.hash.slice(1):'home';$('#main').innerHTML=V[cur]();
+ document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('on',a.dataset.nav===cur));$('#hav').src=av(S.profile.seed)}
+addEventListener('hashchange',()=>{render();scrollTo(0,0)});
+setInterval(()=>{const e=$('#cd');if(e)e.innerHTML=cdHtml()},1000);
+
+/* ---------- modal ---------- */
+const openModal=h=>{$('#mbox').innerHTML=h;$('#modal').classList.remove('hidden')},closeModal=()=>$('#modal').classList.add('hidden');
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+
+/* ---------- chat ---------- */
+const REPLIES=['😂😂 this is gold','Send it to the challenge!','هههه ميم رهيب','Haha stop, I can’t 💀','مين قال كده؟ 😅','Okay that’s a 10/10','Wait, I have a better one…','تحدي الأسبوع هيكون صعب 🔥'];
+function badge(){const n=Object.values(S.unread).reduce((a,b)=>a+b,0),b=$('#badge');b.textContent=n;b.classList.toggle('hidden',!n)}
+function friends(){$('#friends').innerHTML=S.friends.map(f=>`<div class="flex items-center rounded-full border ${S.sel===f.id?'border-[#ffd23f] bg-white/10':'border-white/10'} ps-1 pe-2 py-1 gap-1 shrink-0"><button data-act="self" data-id="${f.id}" class="flex items-center gap-1.5"><img src="${av(f.name)}" class="w-7 h-7 rounded-full"><span class="text-sm font-semibold" dir="auto">${esc(f.name)}</span>${S.unread[f.id]?`<span class="w-2 h-2 rounded-full bg-[#ff5d73]"></span>`:''}</button><button data-act="remf" data-id="${f.id}" class="text-slate-400 hover:text-white px-1" aria-label="Remove friend">✕</button></div>`).join('')||'<span class="text-sm text-slate-400">No friends yet. Add one above · أضف صديقاً</span>'}
+function msgs(){const m=$('#msgs'),L=S.sel&&S.chats[S.sel]||[];
+ m.innerHTML=!S.sel?'<div class="m-auto text-slate-400 text-center">Pick a friend to start chatting<br>اختر صديقاً للبدء</div>':L.length?L.map(x=>`<div dir="auto" class="max-w-[80%] rounded-2xl px-3 py-2 break-words ${x.from==='me'?'self-start bg-[#ff5d73] text-white':'self-end bg-[#1c1940]'}">${esc(x.t)}</div>`).join(''):'<div class="m-auto text-slate-400">Say hi 👋</div>';
+ m.scrollTop=m.scrollHeight}
+
+/* ---------- actions ---------- */
+const act={
+ chat(){const d=$('#drawer'),o=d.classList.contains('-translate-x-full');d.classList.toggle('-translate-x-full',!o);d.classList.toggle('translate-x-0',o)},
+ post(k){const cap=$('#cap-'+k).value.trim(),img=draft[k]||$('#url-'+k).value.trim();
+  if(!img)return toast('Add an image URL or upload a meme first');if(!cap)return toast('Write a caption first');
+  S.posts.unshift({id:uid(),mine:true,cap,img,likes:0,comments:[],ts:Date.now(),ch:k==='challenge',week:WK});draft[k]=null;save();toast('Posted!');render()},
+ like(id){const p=S.posts.find(x=>x.id===id),i=S.liked.indexOf(id);i<0?(S.liked.push(id),p.likes++):(S.liked.splice(i,1),p.likes--);save();refresh(id)},
+ save(id){const i=S.saved.indexOf(id);i<0?(S.saved.push(id),toast('Saved to your profile')):S.saved.splice(i,1);save();cur==='profile'?render():refresh(id)},
+ cmt(id){open.has(id)?open.delete(id):open.add(id);refresh(id);const i=$('#ci-'+id);i&&i.focus()},
+ sendcmt(id){const i=$('#ci-'+id),t=i.value.trim();if(!t)return;S.posts.find(x=>x.id===id).comments.push({n:S.profile.name,t,ts:Date.now()});save();refresh(id);$('#ci-'+id).focus()},
+ del(id,b){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='Tap again to delete';return setTimeout(()=>{delete b.dataset.arm;b.textContent='🗑️ Delete'},3000)}
+  S.posts=S.posts.filter(x=>x.id!==id);S.saved=S.saved.filter(x=>x!==id);S.liked=S.liked.filter(x=>x!==id);save();toast('Meme deleted');render()},
+ ptab(id){ptab=id;render()},
+ edit(){const p=S.profile;openModal(`<h3 class="text-lg font-extrabold mb-4">Edit profile · تعديل الملف</h3><div class="flex items-center gap-4 mb-4"><img id="mav" src="${av(p.seed)}" class="w-16 h-16 rounded-full"><div class="flex-1"><label class="lbl">Avatar seed · بذرة الصورة</label><div class="flex gap-2"><input id="e-seed" class="inp" dir="auto" maxlength="30" value="${esc(p.seed)}" oninput="$('#mav').src=av(this.value)"><button data-act="shuf" class="btn-ghost border border-white/10" aria-label="Random">🎲</button></div></div></div><label class="lbl">Name · الاسم</label><input id="e-name" class="inp mb-3" dir="auto" maxlength="30" value="${esc(p.name)}"><label class="lbl">Bio · نبذة</label><textarea id="e-bio" class="inp mb-4" rows="3" dir="auto" maxlength="160">${esc(p.bio)}</textarea><div class="flex gap-2 justify-end"><button data-act="close" class="btn-ghost">Cancel</button><button data-act="saveprof" class="btn">Save changes</button></div>`)},
+ shuf(){const s=Math.random().toString(36).slice(2,8);$('#e-seed').value=s;$('#mav').src=av(s)},
+ close:closeModal,
+ saveprof(){const n=$('#e-name').value.trim();if(!n)return toast('Name can’t be empty');S.profile={name:n,bio:$('#e-bio').value.trim(),seed:$('#e-seed').value.trim()||n};save();closeModal();render();toast('Profile updated')},
+ addf(){const i=$('#newf'),n=i.value.trim();if(!n)return;if(S.friends.some(f=>f.name.toLowerCase()===n.toLowerCase()))return toast('Already your friend');
+  const f={id:uid(),name:n};S.friends.push(f);i.value='';save();friends();toast(n+' added')},
+ remf(id){S.friends=S.friends.filter(f=>f.id!==id);delete S.chats[id];delete S.unread[id];if(S.sel===id)S.sel=null;save();friends();msgs();badge()},
+ self(id){S.sel=id;S.unread[id]=0;save();friends();msgs();badge();$('#mi').focus()},
+ send(){const i=$('#mi'),t=i.value.trim(),id=S.sel;if(!id)return toast('Pick a friend first');if(!t)return;
+  (S.chats[id]=S.chats[id]||[]).push({from:'me',t,ts:Date.now()});i.value='';save();msgs();
+  setTimeout(()=>{if(!S.friends.some(f=>f.id===id))return;S.chats[id].push({from:'them',t:REPLIES[Math.floor(Math.random()*REPLIES.length)],ts:Date.now()});
+   if(S.sel!==id||$('#drawer').classList.contains('-translate-x-full'))S.unread[id]=(S.unread[id]||0)+1;save();friends();msgs();badge()},900+Math.random()*1200)}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&act[b.dataset.act])act[b.dataset.act](b.dataset.id,b)});
+document.addEventListener('keydown',e=>{const t=e.target;if(e.key==='Enter'&&!e.shiftKey&&t.dataset&&t.dataset.enter){e.preventDefault();act[t.dataset.enter](t.dataset.id)}});
+
+render();friends();msgs();badge();
+</script>
+</body>
+</html>
